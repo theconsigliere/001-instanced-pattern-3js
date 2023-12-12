@@ -1,0 +1,24 @@
+{
+  "name": "offscreen-three-template",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^4.4.5",
+    "bun-types": "latest"
+  },
+  "dependencies": {
+    "gsap": "^3.12.2",
+    "three": "^0.155.0",
+    "vite-plugin-glslify": "^2.0.2"
+  },
+  "module": "index.ts",
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

@@ -3,10 +3,10 @@ import { gsap } from "gsap"
 
 import { Rendering } from "./rendering"
 
-import * as THREE from "three";
+import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 
-import { palettes, sinPalettes } from "./palettes";
+import { palettes, sinPalettes } from "./palettes"
 
 let paletteKey = "blue"
 let palette = palettes[paletteKey]
@@ -14,36 +14,38 @@ let sinPalette = sinPalettes[paletteKey]
 
 // setting up
 let rendering = new Rendering(document.querySelector("#canvas"), palette)
-rendering.camera.position.x = 80;
+rendering.camera.position.x = 80
 
 let controls = new OrbitControls(rendering.camera, rendering.canvas)
 
-let uTime = { value: 0 };
+let uTime = { value: 0 }
 
 // Init
 
-let radius = 2 /3 
-let grid = 20;
+let radius = 2 / 3
+let grid = 20
 let cellSize = 1.66
 let totalGridSize = grid * cellSize
 
 let geometry = new THREE.CylinderGeometry(radius, radius, 1, 8, 2)
-let instancedGeometry = (new THREE.InstancedBufferGeometry()).copy(geometry)
-let instanceCount = grid * grid;
+let instancedGeometry = new THREE.InstancedBufferGeometry().copy(geometry)
+let instanceCount = grid * grid
 instancedGeometry.instanceCount = instanceCount
-
 
 let pos = new Float32Array(instanceCount * 2)
 
-let i =0;
+let i = 0
 for (let y = 0; y < grid; y++)
-for (let x = 0; x < grid; x++) {
-  pos[i] = x * cellSize - totalGridSize/2 + cellSize /2;
-  pos[i + 1] = y * cellSize - totalGridSize/2 + cellSize/2;
-  i+= 2;
-}
+  for (let x = 0; x < grid; x++) {
+    pos[i] = x * cellSize - totalGridSize / 2 + cellSize / 2
+    pos[i + 1] = y * cellSize - totalGridSize / 2 + cellSize / 2
+    i += 2
+  }
 
-instancedGeometry.setAttribute("aPos", new THREE.InstancedBufferAttribute(pos, 2, false))
+instancedGeometry.setAttribute(
+  "aPos",
+  new THREE.InstancedBufferAttribute(pos, 2, false)
+)
 
 let vertexShader = glsl`
 attribute vec2 aPos;
@@ -121,51 +123,49 @@ let material = new THREE.ShaderMaterial({
   fragmentShader,
   uniforms: {
     uTime: uTime,
-    uBackground:    { value: palette.BG },
-    uPalette0:      { value: sinPalette.c0},
-    uPalette1:      { value: sinPalette.c1},
-    uPalette2:      { value: sinPalette.c2},
-    uPalette3:      { value: sinPalette.c3},
-    uPaletteOffset: { value: sinPalette.offset},
-  }
+    uBackground: { value: palette.BG },
+    uPalette0: { value: sinPalette.c0 },
+    uPalette1: { value: sinPalette.c1 },
+    uPalette2: { value: sinPalette.c2 },
+    uPalette3: { value: sinPalette.c3 },
+    uPaletteOffset: { value: sinPalette.offset },
+  },
 })
 
-
-let mesh = new THREE.Mesh(instancedGeometry, material);
+let mesh = new THREE.Mesh(instancedGeometry, material)
 mesh.scale.y = 10
 mesh.rotation.z = -Math.PI / 2
-mesh.position.x = -totalGridSize /2 - 5 
+mesh.position.x = -totalGridSize / 2 - 5
 rendering.scene.add(mesh)
 
-let meshBotton = new THREE.Mesh(instancedGeometry, material);
+let meshBotton = new THREE.Mesh(instancedGeometry, material)
 meshBotton.scale.y = 10
-meshBotton.position.y = -totalGridSize /2 - 5
+meshBotton.position.y = -totalGridSize / 2 - 5
 rendering.scene.add(meshBotton)
 
-let meshTop = new THREE.Mesh(instancedGeometry, material);
+let meshTop = new THREE.Mesh(instancedGeometry, material)
 meshTop.scale.y = 10
 meshTop.rotation.z = Math.PI
-meshTop.position.y = totalGridSize /2 + 5
+meshTop.position.y = totalGridSize / 2 + 5
 rendering.scene.add(meshTop)
 
-let meshRight = new THREE.Mesh(instancedGeometry, material);
+let meshRight = new THREE.Mesh(instancedGeometry, material)
 meshRight.scale.y = 10
-meshRight.rotation.x = Math.PI /2
-meshRight.position.z = -totalGridSize /2 - 5
+meshRight.rotation.x = Math.PI / 2
+meshRight.position.z = -totalGridSize / 2 - 5
 rendering.scene.add(meshRight)
 
-let meshLeft = new THREE.Mesh(instancedGeometry, material);
+let meshLeft = new THREE.Mesh(instancedGeometry, material)
 meshLeft.scale.y = 10
-meshLeft.rotation.x = -Math.PI /2
-meshLeft.position.z = totalGridSize /2 + 5
+meshLeft.rotation.x = -Math.PI / 2
+meshLeft.position.z = totalGridSize / 2 + 5
 rendering.scene.add(meshLeft)
 
 // Events
 
-const tick = (t)=>{
-  uTime.value = t 
+const tick = (t) => {
+  uTime.value = t
   rendering.render()
 }
 
 gsap.ticker.add(tick)
-

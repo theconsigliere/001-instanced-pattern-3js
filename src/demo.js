@@ -137,6 +137,19 @@ void main(){
   // uFade use mix function gsap aniamtes uFade to fade in and out
   float squish = smoothstep(-1., 1., mix(-1., activation, uFade)); // 0, 1
 
+  // max center verticies look bigger by scaling corners down
+  // SCALING FROM THE CENTER
+  // transformed.y += -0.5;
+  // transformed.y *= smoothstep(20., 10., len);
+  // transformed.y += 0.5; 
+
+  // SCALING FROM THE BOTTOM
+  transformed.y += 0.5;
+  transformed.y *= transformed.y * 0.2 + transformed.y * 0.8 * squish;
+  transformed.y += 0.5; 
+
+  //--------------------------------
+
   // split y componenent in two parts 20% for base size and 80% to squish and grow
   transformed.y = transformed.y * 0.2 + transformed.y * 0.8 * squish;
 
@@ -166,6 +179,11 @@ let fragmentShader = glsl`
 varying vec2 vUv;
 varying float vSquish;
 
+// easing blend function
+float ease (float t) {
+  return -0.5 * (cos(PI*t) - 1.0);
+}
+
 // palette function
 // more here https://iquilezles.org/articles/palettes/
 vec3 palette( in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d ){
@@ -193,7 +211,8 @@ void main(){
  // color = vec3(paletteColor);
 
   // mix hte background color with the current color
-  color = mix(uBackground, color, vUv.y);
+  // color = mix(uBackground, color, vUv.y);
+  color = mix(uBackground, color, ease(vUv.y));
   
   gl_FragColor = vec4(color, 1.);
 }

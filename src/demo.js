@@ -12,10 +12,16 @@ import { palettes, sinPalettes } from "./palettes"
 let paletteKey = "blue"
 let palette = palettes[paletteKey]
 let sinPalette = sinPalettes[paletteKey]
+let mesh
+let meshBotton
+let meshLeft
+let meshRight
+let meshTop
+let material
 
 // setting up
 let rendering = new Rendering(document.querySelector("#canvas"), palette)
-rendering.camera.position.x = 80
+rendering.camera.position.x = 120
 
 let controls = new OrbitControls(rendering.camera, rendering.canvas)
 const gui = new dat.GUI()
@@ -26,7 +32,7 @@ let uTime = { value: 0 }
 let radius = 2 / 3
 
 const info = {
-  grid: 20,
+  grid: 40,
   // SEPERATE THE MESHES A BIT
   // make cellsize bigger than 1
   cellSize: 1.66,
@@ -35,16 +41,25 @@ const info = {
 let gridInfo = {
   totalGridSize: info.grid * info.cellSize,
   instanceCount: info.grid * info.grid,
+  wireframe: false,
 }
 
 // Doesn't work yet
-gui.add(info, "grid", 5, 100).onChange(function (value) {
+gui.add(info, "grid", 1, 40).onChange(function (value) {
   updateGeometry()
 })
 
-gui.add(info, "cellSize", 1.66, 10).onChange(function (value) {
+gui.add(info, "cellSize", 0.5, 4).onChange(function (value) {
   updateGeometry()
 })
+
+// add wireframe option to dat gui
+gui
+  .add(gridInfo, "wireframe")
+  .name("Wireframe")
+  .onChange(function (value) {
+    material.wireframe = value
+  })
 
 let geometry = new THREE.CylinderGeometry(radius, radius, 1, 8, 2)
 let instancedGeometry = new THREE.InstancedBufferGeometry().copy(geometry)
@@ -82,6 +97,18 @@ function updateGeometry() {
     "aPos",
     new THREE.InstancedBufferAttribute(pos, 2, false)
   )
+
+  // if mesh exists update the position
+  if (typeof mesh !== "undefined" && mesh !== null) {
+    // clean rendering scene and re add meshes
+    rendering.scene.remove(mesh)
+    rendering.scene.remove(meshBotton)
+    rendering.scene.remove(meshTop)
+    rendering.scene.remove(meshRight)
+    rendering.scene.remove(meshLeft)
+
+    addMeshes()
+  }
 }
 
 updateGeometry()
@@ -93,6 +120,7 @@ let vertexShader = glsl`
 precision highp float;
 attribute vec2 aPos;
 uniform float uTime;
+uniform float uFade;
 
 varying vec2 vUv;
 varying float vSquish;
@@ -104,9 +132,10 @@ void main(){
   // calculate the distance to the origin. This length function is going to create a radial gradient from the center
   float len = length(aPos);
   // input the radial gradient into a sin wave to make it loop infinitely, this makes it so when you add or subtract time, the gradient will start to grow from the center.
-  float activation = sin(len * 0.3 - uTime * 2.0); // -1, 1
+  float activation = sin(len * 0.3 - uTime * 2.0 + uFade * 5.); // -1, 1
   // normalize the activation to be between 0 and 1
-  float squish = smoothstep(-1., 1., activation); // 0, 1
+  // uFade use mix function gsap aniamtes uFade to fade in and out
+  float squish = smoothstep(-1., 1., mix(-1., activation, uFade)); // 0, 1
 
   // split y componenent in two parts 20% for base size and 80% to squish and grow
   transformed.y = transformed.y * 0.2 + transformed.y * 0.8 * squish;
@@ -156,10 +185,8 @@ uniform float uPaletteOffset;
 void main(){
   vec3 color = vec3(0.);
 
-
   // use our palette colours in the palette function
   vec3 paletteColor = palette(vSquish + uPaletteOffset, uPalette0, uPalette1, uPalette2, uPalette3);
-
 
   // mix the palette color with the background depending on the squish 
   color = mix(paletteColor, uBackground, cos(vSquish * PI * 2.) ); // -1 to 1
@@ -172,11 +199,12 @@ void main(){
 }
 `
 
-let material = new THREE.ShaderMaterial({
+material = new THREE.ShaderMaterial({
   vertexShader,
   fragmentShader,
   uniforms: {
     uTime: uTime,
+    uFade: { value: 1 },
     uBackground: { value: palette.BG },
     uPalette0: { value: sinPalette.c0 },
     uPalette1: { value: sinPalette.c1 },
@@ -186,41 +214,53 @@ let material = new THREE.ShaderMaterial({
   },
 })
 
+let tl = gsap.timeline()
+
+tl.fromTo(
+  material.uniforms.uFade,
+  { value: 0 },
+  { value: 1, duration: 3, ease: "power2.out" }
+)
+
 // create mesh
 
-// main background mesh
-let mesh = new THREE.Mesh(instancedGeometry, material)
-mesh.scale.y = 10
-// flip mesh to look at us
-mesh.rotation.z = -Math.PI / 2
-// push our mesh back by half the gridSize
-mesh.position.x = -gridInfo.totalGridSize / 2 - 5
-rendering.scene.add(mesh)
+function addMeshes() {
+  // main background mesh
+  mesh = new THREE.Mesh(instancedGeometry, material)
+  mesh.scale.y = 10
+  // flip mesh to look at us
+  mesh.rotation.z = -Math.PI / 2
+  // push our mesh back by half the gridSize
+  mesh.position.x = -gridInfo.totalGridSize / 2 - 5
+  rendering.scene.add(mesh)
 
-// bottom mesh: (on its side) and move to bottom
-let meshBotton = new THREE.Mesh(instancedGeometry, material)
-meshBotton.scale.y = 10
-meshBotton.position.y = -gridInfo.totalGridSize / 2 - 5
-rendering.scene.add(meshBotton)
+  // bottom mesh: (on its side) and move to bottom
+  meshBotton = new THREE.Mesh(instancedGeometry, material)
+  meshBotton.scale.y = 10
+  meshBotton.position.y = -gridInfo.totalGridSize / 2 - 5
+  rendering.scene.add(meshBotton)
 
-// mesh top: rotate it to look down and move it to top
-let meshTop = new THREE.Mesh(instancedGeometry, material)
-meshTop.scale.y = 10
-meshTop.rotation.z = Math.PI
-meshTop.position.y = gridInfo.totalGridSize / 2 + 5
-rendering.scene.add(meshTop)
+  // mesh top: rotate it to look down and move it to top
+  meshTop = new THREE.Mesh(instancedGeometry, material)
+  meshTop.scale.y = 10
+  meshTop.rotation.z = Math.PI
+  meshTop.position.y = gridInfo.totalGridSize / 2 + 5
+  rendering.scene.add(meshTop)
 
-let meshRight = new THREE.Mesh(instancedGeometry, material)
-meshRight.scale.y = 10
-meshRight.rotation.x = Math.PI / 2
-meshRight.position.z = -gridInfo.totalGridSize / 2 - 5
-rendering.scene.add(meshRight)
+  meshRight = new THREE.Mesh(instancedGeometry, material)
+  meshRight.scale.y = 10
+  meshRight.rotation.x = Math.PI / 2
+  meshRight.position.z = -gridInfo.totalGridSize / 2 - 5
+  rendering.scene.add(meshRight)
 
-let meshLeft = new THREE.Mesh(instancedGeometry, material)
-meshLeft.scale.y = 10
-meshLeft.rotation.x = -Math.PI / 2
-meshLeft.position.z = gridInfo.totalGridSize / 2 + 5
-rendering.scene.add(meshLeft)
+  meshLeft = new THREE.Mesh(instancedGeometry, material)
+  meshLeft.scale.y = 10
+  meshLeft.rotation.x = -Math.PI / 2
+  meshLeft.position.z = gridInfo.totalGridSize / 2 + 5
+  rendering.scene.add(meshLeft)
+}
+
+addMeshes()
 
 // Events
 
